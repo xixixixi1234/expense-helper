@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ExpenseHelper — AI Audit Assistant</title>
+<style>
+  :root {
+    --blue: #2563eb;
+    --blue-dark: #1d4ed8;
+    --blue-soft: #eff4ff;
+    --green: #15803d;
+    --red: #dc2626;
+    --text: #0f172a;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --bg: #f1f5f9;
+    --card: #ffffff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+  .app {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: #f8fafc;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Header */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    background: #fff;
+  }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand .logo {
+    width: 46px; height: 46px; border-radius: 12px;
+    background: var(--blue);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+  }
+  .brand h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+  .brand p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .user { display: flex; align-items: center; gap: 10px; color: var(--muted); font-weight: 600; font-size: 15px; }
+  .user .avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--blue-soft); color: var(--blue);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px;
+  }
+
+  /* Breadcrumb */
+  .crumb {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 28px 4px;
+  }
+  .crumb .path { color: var(--muted); font-size: 15px; }
+  .crumb .path b { color: var(--text); }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--blue-soft); color: var(--blue);
+    font-weight: 700; font-size: 14px;
+    padding: 8px 16px; border-radius: 999px;
+  }
+  .status-pill .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--blue); }
+
+  /* Body grid */
+  .grid {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: 24px;
+    padding: 16px 28px 96px;
+    flex: 1;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+  }
+  .card + .card { margin-top: 20px; }
+  .card h2 {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 19px; font-weight: 700; margin-bottom: 20px;
+  }
+  .card h2 .ic { color: var(--blue); }
+
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 40px; }
+  .field label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  .field .val { font-size: 16px; font-weight: 500; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  th {
+    text-align: left; font-size: 13px; color: var(--muted);
+    padding: 12px 10px; border-bottom: 1px solid var(--border); font-weight: 600;
+  }
+  th.amt, td.amt { text-align: right; }
+  td { padding: 16px 10px; font-size: 15px; border-bottom: 1px solid var(--border); }
+  tr.total td { font-weight: 700; background: #f8fafc; border-bottom: none; }
+
+  /* Receipt / dropzone */
+  .receipt {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .receipt .left { display: flex; align-items: center; gap: 14px; }
+  .receipt .rc-ic {
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 2px solid var(--green); color: var(--green);
+    display: flex; align-items: center; justify-content: center; font-weight: 700;
+  }
+  .receipt h3 { font-size: 18px; font-weight: 700; }
+  .receipt p { font-size: 14px; color: var(--muted); }
+  .btn-outline {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid var(--border); background: #fff; color: var(--text);
+    padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer;
+  }
+  .btn-outline:hover { background: #f8fafc; }
+
+  .dropzone {
+    margin-top: 16px;
+    border: 2px dashed #cbd5e1; border-radius: 12px;
+    padding: 22px; text-align: center; color: var(--muted);
+    font-size: 14px; cursor: pointer; transition: .15s;
+  }
+  .dropzone.drag { border-color: var(--blue); background: var(--blue-soft); color: var(--blue); }
+  .dropzone b { color: var(--blue); }
+  .filelist { margin-top: 10px; font-size: 13px; }
+  .filelist .f { display: flex; justify-content: space-between; padding: 6px 4px; border-top: 1px solid var(--border); }
+
+  /* Chat panel */
+  .chat { display: flex; flex-direction: column; height: 100%; }
+  .chat-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .chat-head .bot {
+    width: 46px; height: 46px; border-radius: 50%; background: #fff;
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center; font-size: 22px;
+  }
+  .chat-head b { font-size: 19px; }
+  .messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding-right: 4px; min-height: 320px; }
+  .bubble {
+    max-width: 88%; padding: 16px 18px; border-radius: 16px; font-size: 15px; line-height: 1.55;
+    border: 1px solid var(--border); background: #fff; white-space: pre-wrap;
+  }
+  .bubble.user { align-self: flex-end; background: var(--blue); color: #fff; border-color: var(--blue); }
+  .bubble.demo-note { font-size: 12px; color: var(--muted); border-style: dashed; background: #fafbfc; }
+  .composer { display: flex; gap: 10px; margin-top: 16px; }
+  .composer input {
+    flex: 1; border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px; font-size: 15px; outline: none;
+  }
+  .composer input:focus { border-color: var(--blue); }
+  .composer button {
+    width: 52px; border: none; border-radius: 12px; background: var(--blue); color: #fff;
+    font-size: 20px; cursor: pointer;
+  }
+  .composer button:hover { background: var(--blue-dark); }
+
+  /* Footer actions */
+  footer {
+    position: sticky; bottom: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 28px; background: #fff; border-top: 1px solid var(--border);
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 14px 26px; border-radius: 12px; font-weight: 700; font-size: 15px; cursor: pointer; border: 1px solid transparent;
+  }
+  .btn-info { color: var(--blue); border-color: #bfdbfe; background: #fff; }
+  .btn-reject { color: var(--red); border-color: #fecaca; background: #fff; }
+  .btn-approve { color: #fff; background: var(--green); }
+  .right-actions { display: flex; gap: 14px; }
+
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: 1fr; }
+    .fields { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="logo">🤖</div>
+      <div>
+        <h1>ExpenseHelper</h1>
+        <p>AI Audit Assistant</p>
+      </div>
+    </div>
+    <div class="user">
+      <div class="avatar">AA</div>
+      <span>Auditor ▾</span>
+    </div>
+  </header>
+
+  <div class="crumb">
+    <div class="path">All Claims / <b>Claim #EH-2026-0801-017</b></div>
+    <div class="status-pill"><span class="dot"></span> Audit Processing</div>
+  </div>
+
+  <div class="grid">
+    <!-- LEFT -->
+    <div>
+      <div class="card">
+        <h2><span class="ic">📄</span> Claim Summary</h2>
+        <div class="fields">
+          <div class="field"><label>Employee</label><div class="val" id="f-employee">Linda</div></div>
+          <div class="field"><label>Claim ID</label><div class="val" id="f-claimid">EH-2026-0801-017</div></div>
+          <div class="field"><label>Department</label><div class="val">Finance</div></div>
+          <div class="field"><label>Claim Date</label><div class="val">Aug 5, 2026</div></div>
+          <div class="field"><label>Trip Purpose</label><div class="val">Business Meeting</div></div>
+          <div class="field"><label>Trip Dates</label><div class="val">Aug 1 – Aug 4, 2026</div></div>
+          <div class="field"><label>Destination</label><div class="val">Boston, USA</div></div>
+          <div class="field"><label>Submitted</label><div class="val">Aug 5, 2026</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="ic">📋</span> Expense Items</h2>
+        <table>
+          <thead>
+            <tr><th>Date</th><th>Category</th><th>Description</th><th class="amt">Amount (USD)</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Aug 1 – Aug 4, 2026</td><td>Hotel</td>
+              <td>Hotel stay in Boston, 3 nights</td><td class="amt">$795.00</td>
+            </tr>
+            <tr class="total"><td colspan="3">Total</td><td class="amt">$795.00</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="receipt">
+          <div class="left">
+            <div class="rc-ic">✓</div>
+            <div>
+              <h3>Receipt</h3>
+              <p id="receipt-status">Receipt attached</p>
+            </div>
+          </div>
+          <button class="btn-outline" id="pick-btn">📄 View / Upload Receipt</button>
+        </div>
+        <div class="dropzone" id="dropzone">
+          Drag &amp; drop invoice here, or <b>click to browse</b><br />
+          <small>PDF, JPG, PNG — up to 10 MB</small>
+        </div>
+        <input type="file" id="file-input" accept=".pdf,.jpg,.jpeg,.png" hidden multiple />
+        <div class="filelist" id="filelist"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: chat -->
+    <div class="card chat">
+      <div class="chat-head">
+        <div class="bot">🤖</div>
+        <b>ExpenseHelper</b>
+      </div>
+      <div class="messages" id="messages"></div>
+      <div class="composer">
+        <input id="chat-input" placeholder="Ask a question..." />
+        <button id="send-btn" title="Send">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <button class="btn btn-info">ⓘ Request More Info</button>
+    <div class="right-actions">
+      <button class="btn btn-reject" id="reject-btn">✕ Reject</button>
+      <button class="btn btn-approve" id="approve-btn">✓ Approve</button>
+    </div>
+  </footer>
+</div>
+
+<script>
+const CLAIM = {
+  claimId: "EH-2026-0801-017",
+  employee: "Linda",
+  department: "Finance",
+  tripPurpose: "Business Meeting",
+  destination: "Boston, USA",
+  tripDates: "Aug 1 – Aug 4, 2026",
+  submitted: "Aug 5, 2026",
+  items: "Hotel stay in Boston, 3 nights — $795.00",
+  total: "$795.00",
+  receiptAttached: true,
+};
+
+const messagesEl = document.getElementById("messages");
+const history = [];
+
+function addBubble(text, who, isNote) {
+  const b = document.createElement("div");
+  b.className = "bubble " + (who === "user" ? "user" : "") + (isNote ? " demo-note" : "");
+  b.textContent = text;
+  messagesEl.appendChild(b);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  return b;
+}
+
+// Initial assistant message (mirrors screenshot intent)
+addBubble(
+  "Audit processing.\n\nThis claim could be valid.\n\nBut my check does not always catch every rule in the Guide.\n\nPlease read the details and confirm they meet your manual.",
+  "assistant"
+);
+
+async function sendMessage(text) {
+  if (!text.trim()) return;
+  addBubble(text, "user");
+  history.push({ role: "user", content: text });
+  const thinking = addBubble("…", "assistant");
+  try {
+    const r = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text, claim: CLAIM, history }),
+    });
+    const data = await r.json();
+    thinking.textContent = data.reply;
+    history.push({ role: "assistant", content: data.reply });
+    if (data.demo && data.note) addBubble(data.note, "assistant", true);
+  } catch (e) {
+    thinking.textContent = "Network error — could not reach the server.";
+  }
+}
+
+document.getElementById("send-btn").onclick = () => {
+  const inp = document.getElementById("chat-input");
+  sendMessage(inp.value);
+  inp.value = "";
+};
+document.getElementById("chat-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { sendMessage(e.target.value); e.target.value = ""; }
+});
+
+// Ask for an initial assessment automatically
+sendMessage("Please review this claim and give your assessment.");
+
+// ---- Upload / drag & drop ----
+const dz = document.getElementById("dropzone");
+const fileInput = document.getElementById("file-input");
+const filelist = document.getElementById("filelist");
+
+dz.onclick = () => fileInput.click();
+document.getElementById("pick-btn").onclick = () => fileInput.click();
+["dragenter", "dragover"].forEach((ev) =>
+  dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.add("drag"); })
+);
+["dragleave", "drop"].forEach((ev) =>
+  dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.remove("drag"); })
+);
+dz.addEventListener("drop", (e) => handleFiles(e.dataTransfer.files));
+fileInput.addEventListener("change", (e) => handleFiles(e.target.files));
+
+async function handleFiles(files) {
+  for (const file of files) {
+    const row = document.createElement("div");
+    row.className = "f";
+    row.innerHTML = `<span>📎 ${file.name}</span><span>uploading…</span>`;
+    filelist.appendChild(row);
+    const fd = new FormData();
+    fd.append("receipt", file);
+    try {
+      const r = await fetch("/api/upload", { method: "POST", body: fd });
+      const data = await r.json();
+      row.querySelector("span:last-child").textContent =
+        data.ok ? (data.size / 1024).toFixed(0) + " KB ✓" : "failed";
+      document.getElementById("receipt-status").textContent = "Receipt attached: " + file.name;
+    } catch {
+      row.querySelector("span:last-child").textContent = "error";
+    }
+  }
+}
+
+// ---- Footer actions ----
+document.getElementById("approve-btn").onclick = () =>
+  alert("Claim " + CLAIM.claimId + " approved. (Final decision recorded by auditor.)");
+document.getElementById("reject-btn").onclick = () =>
+  alert("Claim " + CLAIM.claimId + " rejected.");
+</script>
+</body>
+</html>
